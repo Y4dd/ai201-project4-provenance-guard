@@ -115,7 +115,24 @@ The second row is the dampening rule firing on real data: the LLM signal was con
 
 > A genuine writer submitting their own work makes a handful of submissions in a sitting, not dozens; a script flooding the system to probe or abuse the Groq-backed pipeline looks very different. 10/minute comfortably covers real usage bursts (e.g. resubmitting after edits) while still capping the damage a flood script can do; 100/day bounds sustained abuse across a session without blocking a prolific creator's normal daily use.
 
-Verified with a 12-request burst against `/submit` from a single client: the first 10 returned `200`, the next 2 returned `429`. `audit_log.json` shows exactly 10 entries from that burst (content IDs `abd1913a…` through `e762e23e…`, timestamps `20:27:40.626` to `20:27:43.051`) — the two `429`s never reached the handler, so they never got an audit entry, which is the expected behavior for a rejection that happens before any classification work occurs.
+Verified with a 12-request burst against `/submit` from a single client. Captured status codes, in order:
+
+```
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+429
+429
+```
+
+The first 10 returned `200`, the next 2 returned `429`. `audit_log.json` shows exactly 10 entries from that burst (content IDs `2ad91f66…` through `b8110cef…`, timestamps `21:00:18.995` to `21:00:22.857` UTC, `creator_id: "burst_verify"`) — the two `429`s never reached the handler, so they never got an audit entry, which is the expected behavior for a rejection that happens before any classification work occurs.
 
 ## Known limitations
 
@@ -126,6 +143,8 @@ Verified with a 12-request burst against `/submit` from a single client: the fir
 **Where the spec helped:** the explicit hint that a false positive (flagging a human as AI) is worse than a false negative on a creative-writing platform shaped the scoring logic directly, not just the label text. Without that constraint named up front, the natural implementation is a plain average with a single 0.5 cutoff — symmetric, and exactly the kind of design that would flag the spec's own "monetary policy" example as confidently AI-generated. The disagreement-dampening rule and the both-signals-≥0.55 gate for `likely_ai` both exist specifically because that asymmetry was named before any scoring code was written.
 
 **Where the implementation diverged:** the spec describes the punctuation sub-score generically ("punctuation density/variety") without specifying how *absence* of punctuation should be scored. A first implementation mapped zero expressive punctuation straight to full AI-confidence (1.0) — which seemed reasonable in isolation, but caused the spec's own monetary-policy borderline example to score as confidently AI-generated, since formal academic/policy prose legitimately uses no em dashes, ellipses, or emphasis punctuation either. The fix was to treat the sub-score asymmetrically: absence of expressive punctuation is weak evidence (capped at a mild 0.6 lean), while its presence is strong evidence of a human hand (scales down to 0.0). The spec didn't call this out explicitly — it surfaced from testing against the spec's own example text, which is the scenario the spec's "test before wiring in" guidance is for.
+
+**A second, smaller divergence (validation, not scoring):** `requirements.md`'s own Milestone 3 curl example sends `{"text": "..."}` with no `creator_id`, even though the prose immediately above that example says the endpoint needs both fields, and this project's locked data contract (`CLAUDE.md`) requires `creator_id` on every `/submit` request. Running that literal example against this implementation returns `400 {"error": "text and creator_id are required"}`, not the documented success response. Treated as a spec typo rather than a code bug — `app.py`'s validation was left as-is rather than loosened to match a stray example, since the locked contract is the one other milestones build on. Anyone re-running the curl examples from `requirements.md` against this app should include `creator_id` in the body.
 
 ## AI usage
 

@@ -47,6 +47,19 @@ else:
 - Thresholds: **≥ 0.7** (combined) **and both signals ≥ 0.55** → `likely_ai`. **≤ 0.3** → `likely_human`. Everything else → `uncertain`. This means 0.51 and 0.95 land in clearly different bands (uncertain vs. likely_ai), satisfying the "meaningfully different" requirement.
 - The asymmetric AI-gate and disagreement-dampening rule both exist specifically to make false positives harder to produce than false negatives.
 
+### False-Positive Trace
+
+The scenario that motivated the asymmetry mechanisms above, traced through the real system (not hypothetical — `content_id ce05ba47-7d64-4195-8e1f-41fdaaa8b893` in `audit_log.json`, the spec's own "monetary policy" borderline-formal-human example from `requirements.md` → Milestone 4):
+
+1. **Text:** formal, human-written academic prose about monetary policy and asset-price inflation — uniform sentence structure, no contractions, no irregular punctuation. The kind of writing Detection Signals §1 already flags as Signal 1's blind spot.
+2. **Signal 1 (Groq):** `llm_score = 0.85` — confidently reads the formal tone and tidy structure as AI-like.
+3. **Signal 2 (stylometrics):** `stylometric_score = 0.5159` — only a mild lean; the structural metrics don't agree with Signal 1 nearly as strongly.
+4. **Combination:** naive average = 0.6829; disagreement = |0.85 − 0.5159| = 0.3341, just **under** the 0.35 dampening threshold, so dampening doesn't fire here. The combined score stands at **0.6829 (68%)** — below the 0.7 `likely_ai` floor, so the asymmetric gate is never even reached. The false positive is avoided by where the threshold sits, not only by the gate.
+5. **Label the creator sees:** `attribution = "uncertain"` → *"Uncertain — we couldn't confidently determine whether this content is AI-generated or human-written (confidence: 68%). If you believe this is misclassified, you can appeal."* — not a confident, wrong "likely AI-generated" verdict.
+6. **Appeal:** the creator submits `creator_reasoning: "I wrote this myself for a macroeconomics seminar paper — it is formal academic prose, not AI-generated."` `POST /appeal` appends a *new* audit log entry for the same `content_id` with `status: "under_review"`, carrying forward the original `attribution`/`confidence`/`llm_score`/`stylometric_score` — the original `classified` entry is left untouched, so a reviewer sees the original call and the dispute side by side.
+
+Without the dampening rule and the both-signals-≥0.55 gate, a naive average-and-0.5-cutoff design would have landed this example at the same 0.6829 average but with no second check on `likely_ai` — and a less generous gate placement could easily have let a confident-but-disagreeing Signal 1 push borderline formal human writing into a confidently wrong AI label. This is the case both mechanisms exist for.
+
 ## Transparency Label Design
 
 | Variant | Exact text shown to the reader |
@@ -73,6 +86,14 @@ else:
 ## Architecture
 
 **Submission flow** — `POST /submit` → Signal 1 (Groq) → Signal 2 (stylometrics) → Confidence Scorer → Label Generator → Audit Logger → response. **Appeal flow** — `POST /appeal` → Status Updater (`under_review`) → Audit Logger → response. Both flows write through the same audit log, so a content item's full history (original classification + any appeal) lives in one place.
+
+### API Surface
+
+| Endpoint | Accepts | Returns |
+|---|---|---|
+| `POST /submit` | `{text, creator_id}` | `{content_id, attribution, confidence, label}` |
+| `GET /log` | nothing (no body, no params) | `{entries: [...]}` — every audit log entry, submissions and appeals alike |
+| `POST /appeal` | `{content_id, creator_reasoning}` | `{content_id, status: "under_review", message}` |
 
 ```
 SUBMISSION FLOW
