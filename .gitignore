@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 *.db
 *.sqlite3
+audit_log.json
 .DS_Store
 .idea/
 .vscode/
