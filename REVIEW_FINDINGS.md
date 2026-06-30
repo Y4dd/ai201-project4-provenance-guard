@@ -5,7 +5,7 @@
 ## CRIT-1 — Implementation never committed to git; no GitHub remote
 
 - [x] Remote added (`origin` → `git@github.com:Y4dd/ai201-project4-provenance-guard.git`) and implementation committed locally (`d7a3143`)
-- [ ] **Still open: push to GitHub** — needs explicit user go-ahead before running `git push`
+- [x] Pushed to GitHub 2026-06-30 (`git push -u origin main`, explicit user go-ahead given) — `main` now tracks `origin/main`
 - **Found by:** repo-state check (orchestrator) + M6 agent, independently
 - **Evidence:** `git ls-files` showed only docs tracked (`CLAUDE.md`, `GOAL.md`, `README.md`, `planning.md`, `requirements.md`, `requirements.txt`, `.gitignore`). `app.py`, `signals.py`, `scoring.py`, `audit_log.py` were all untracked (`??`). `git remote -v` returned nothing.
 - **Why it matters:** `requirements.md` (Deliverables & Format) calls committed source code + README "the canonical record graders rely on," and the submission checklist requires a GitHub repo link. With nothing committed and no remote, there's no repo to link.
