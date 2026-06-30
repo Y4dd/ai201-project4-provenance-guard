@@ -4,28 +4,28 @@
 
 ## Current Status
 
-- **Phase:** Not started
-- **Last session:** 2026-06-30 — repo scaffolded (`requirements.md`, `CLAUDE.md`, `GOAL.md`, `planning.md` skeleton, `/goal` command, repo bootstrap).
-- **Next step:** Milestone 1 — read the required features list, write the architecture narrative, choose the two detection signals, trace the false-positive scenario, sketch the API surface, draw the submission/appeal flow diagram.
+- **Phase:** Milestones 1–2 complete (design). Starting Milestone 3 (first code).
+- **Last session:** 2026-06-30 — repo scaffolded, then `/goal` run for the first time: drafted the full architecture, chose the spec's recommended signal pairing (Groq LLM + stylometrics), wrote the confidence-scoring formula (with disagreement dampening + asymmetric AI gate for the false-positive asymmetry), the three label variants, the appeals workflow, two edge cases, and the AI Tool Plan — all written into `planning.md`.
+- **Next step:** Milestone 3 — set up the Flask app, build `POST /submit` (hardcoded response first), implement Signal 1 (Groq), wire it in, set up the audit log, add `GET /log`. Use `planning.md` → `## AI Tool Plan` → M3 entry for what to ask an AI tool for and how to verify it.
 
 ---
 
 ## Milestone 1: Understand the System and Define Your Architecture
 
-- [ ] Architecture narrative written — the path a single piece of text takes from submission to the label a user sees, naming every component it touches
-- [ ] Two detection signals chosen, each with: what property it measures, why that differs between human/AI writing, and its blind spot
-- [ ] False-positive scenario traced through the system (confidence score, label, appeal path)
-- [ ] API surface sketched (endpoints, what each accepts/returns)
-- [ ] Diagram drawn: submission flow (`POST /submit` → signal 1 → signal 2 → confidence scoring → transparency label → audit log → response) and appeal flow (`POST /appeal` → status update → audit log → response)
+- [x] Architecture narrative written — the path a single piece of text takes from submission to the label a user sees, naming every component it touches (see `planning.md` → `## Architecture`)
+- [x] Two detection signals chosen, each with: what property it measures, why that differs between human/AI writing, and its blind spot (`planning.md` → `## Detection Signals`)
+- [x] False-positive scenario traced through the system (confidence score, label, appeal path) — informed the disagreement-dampening + asymmetric AI gate in `## Uncertainty Representation`
+- [x] API surface sketched (`POST /submit`, `GET /log`, `POST /appeal` — see `CLAUDE.md` data contracts)
+- [x] Diagram drawn: submission flow and appeal flow (`planning.md` → `## Architecture`)
 
 **Checkpoint (verbatim):** "You can describe the path a submitted piece of text takes through your system from start to finish, naming every component. You have chosen 2 detection signals and can explain what each captures and what it misses. You have a rough list of the API endpoints you need to build. You have a diagram showing both the submission and appeal flows."
 
 ## Milestone 2: Write Your Spec Before Any Code
 
-- [ ] `planning.md` addresses all five questions (detection signals, uncertainty representation, transparency label design, appeals workflow, anticipated edge cases) with specific, implementation-ready answers
-- [ ] `## Architecture` section added to `planning.md` (diagram from Milestone 1 + 2–3 sentence narrative)
-- [ ] `## AI Tool Plan` section added to `planning.md` (M3, M4, M5: which spec sections to provide, what to ask for, how to verify)
-- [ ] Label variants reviewed/revised before building
+- [x] `planning.md` addresses all five questions (detection signals, uncertainty representation, transparency label design, appeals workflow, anticipated edge cases) with specific, implementation-ready answers
+- [x] `## Architecture` section added to `planning.md` (diagram from Milestone 1 + narrative)
+- [x] `## AI Tool Plan` section added to `planning.md` (M3, M4, M5: which spec sections to provide, what to ask for, how to verify)
+- [x] Label variants reviewed/revised before building — three exact-text variants written in `## Transparency Label Design`
 
 **Checkpoint (verbatim):** "`planning.md` addresses all five questions with specific answers. You have written out the three label variants (high-confidence AI, high-confidence human, uncertain). Your confidence scoring approach produces different labels at different score ranges — not a binary flip at 0.5. Your `## Architecture` section includes the diagram from Milestone 1. Your `## AI Tool Plan` section covers all three implementation milestones with specific sections, requests, and verification steps."
 
@@ -95,4 +95,4 @@
 
 > Updated immediately before every `/clear`. What's in progress, what broke, the exact next action.
 
-- (none yet — scaffolding session only)
+- **2026-06-30:** Milestones 1–2 done — `planning.md` is fully written (signals, scoring formula, label text, appeals workflow, edge cases, architecture diagram, AI Tool Plan). Nothing implemented yet — no Flask app, no venv-installed code run. Next action: start Milestone 3 — scaffold `app.py`, build `POST /submit` with a hardcoded response first, then implement the Groq signal function per `planning.md` → AI Tool Plan → M3, test it directly with the four example texts from `requirements.md` → Milestone 4, then wire it into the endpoint and add the audit log + `GET /log`. Good point to `/clear` before diving into M3.
