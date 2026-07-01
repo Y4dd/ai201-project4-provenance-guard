@@ -1,0 +1,520 @@
+{
+  "info": {
+    "_postman_id": "a5f65d3e-95c4-4910-8f44-1a9b95969dca",
+    "name": "Provenance Guard",
+    "description": "AI201 Project 4 — showcase collection for the Provenance Guard Flask backend.\n\nRun order for a demo / portfolio walkthrough:\n1. **Submissions** — hits all three transparency-label variants (likely_human, uncertain, likely_ai), plus a validation-error example.\n2. **Appeals** — appeals the \"uncertain\" submission from step 1 (content_id is captured automatically), plus a 404 example for an unknown content_id.\n3. **Rate Limiting** — 12 requests in sequence against /submit; run this folder with Collection Runner (or click through fast) to see the first 10 return 200 and the last 2 return 429.\n4. **Audit Log** — GET /log, confirms every submission and appeal above landed in the structured audit trail.\n\nBefore running: start the app locally (`python app.py`, requires `GROQ_API_KEY` in `.env`) and confirm the `base_url` collection variable matches where it's listening (default `http://localhost:5000`).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "content_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1 — Submissions",
+      "item": [
+        {
+          "name": "Submit - Likely Human",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Response has required fields\", function () {",
+                  "    pm.expect(json).to.have.property('content_id');",
+                  "    pm.expect(json).to.have.property('attribution');",
+                  "    pm.expect(json).to.have.property('confidence');",
+                  "    pm.expect(json).to.have.property('label');",
+                  "});",
+                  "",
+                  "pm.test(\"attribution is a valid category\", function () {",
+                  "    pm.expect(['likely_ai', 'likely_human', 'uncertain']).to.include(json.attribution);",
+                  "});",
+                  "",
+                  "console.log('attribution:', json.attribution, '| confidence:', json.confidence, '| label:', json.label);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"ok so i finally tried that new ramen place downtown and honestly? underwhelming. the broth was fine but they put WAY too much sodium in it and i was thirsty for like three hours after. my friend got the spicy version and said it was better. probably won't go back unless someone drags me there\",\n  \"creator_id\": \"demo_human\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/submit",
+              "host": ["{{base_url}}"],
+              "path": ["submit"]
+            },
+            "description": "Casual, irregular, first-person text — expected to land in the likely_human band (low combined score)."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit - Uncertain (Borderline)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Response has required fields\", function () {",
+                  "    pm.expect(json).to.have.property('content_id');",
+                  "    pm.expect(json).to.have.property('attribution');",
+                  "    pm.expect(json).to.have.property('confidence');",
+                  "    pm.expect(json).to.have.property('label');",
+                  "});",
+                  "",
+                  "pm.test(\"attribution is a valid category\", function () {",
+                  "    pm.expect(['likely_ai', 'likely_human', 'uncertain']).to.include(json.attribution);",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('content_id', json.content_id);",
+                  "console.log('Saved content_id for the Appeals folder:', json.content_id);",
+                  "console.log('attribution:', json.attribution, '| confidence:', json.confidence, '| label:', json.label);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"The relationship between monetary policy and asset price inflation has been extensively studied in the literature. Central banks face a fundamental tension between their mandate for price stability and the unintended consequences of prolonged low interest rates on equity and real estate valuations.\",\n  \"creator_id\": \"demo_borderline\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/submit",
+              "host": ["{{base_url}}"],
+              "path": ["submit"]
+            },
+            "description": "Formal, uniform academic prose — the spec's own 'monetary policy' borderline example, the exact case that motivated the disagreement-dampening rule. Expected to land in the uncertain band. Its content_id is saved to the {{content_id}} collection variable for the Appeals folder."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit - Likely AI (Formulaic)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Response has required fields\", function () {",
+                  "    pm.expect(json).to.have.property('content_id');",
+                  "    pm.expect(json).to.have.property('attribution');",
+                  "    pm.expect(json).to.have.property('confidence');",
+                  "    pm.expect(json).to.have.property('label');",
+                  "});",
+                  "",
+                  "pm.test(\"attribution is a valid category\", function () {",
+                  "    pm.expect(['likely_ai', 'likely_human', 'uncertain']).to.include(json.attribution);",
+                  "});",
+                  "",
+                  "console.log('attribution:', json.attribution, '| confidence:', json.confidence, '| label:', json.label);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Artificial intelligence technology continues to transform modern business operations. It is important to note that many organizations now use artificial intelligence to improve efficiency. Furthermore, artificial intelligence enables organizations to automate routine tasks effectively. Moreover, artificial intelligence supports organizations in analyzing large amounts of data quickly. In addition, artificial intelligence helps organizations reduce operational costs significantly.\",\n  \"creator_id\": \"demo_ai\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/submit",
+              "host": ["{{base_url}}"],
+              "path": ["submit"]
+            },
+            "description": "Uniform sentence structure, generic hedging phrases, repetitive vocabulary — designed to clear both signals' 0.55 agreement gate for likely_ai. Since llm_score is a live Groq call, this can occasionally land in uncertain instead; either result is legitimate demo material (the README documents the same conservative behavior on the spec's own 'clearly AI' example)."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit - Missing creator_id (400 validation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has an error message\", function () {",
+                  "    pm.expect(pm.response.json()).to.have.property('error');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"This request intentionally omits creator_id to demonstrate input validation.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/submit",
+              "host": ["{{base_url}}"],
+              "path": ["submit"]
+            },
+            "description": "Both text and creator_id are required per the locked data contract in CLAUDE.md. Demonstrates the 400 validation path."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2 — Appeals",
+      "item": [
+        {
+          "name": "Appeal - Borderline Submission",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"status is under_review\", function () {",
+                  "    pm.expect(json.status).to.eql('under_review');",
+                  "});",
+                  "",
+                  "console.log('Appeal recorded for content_id:', json.content_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content_id\": \"{{content_id}}\",\n  \"creator_reasoning\": \"This is my own academic writing on monetary policy, not AI-generated. I'd like this reviewed.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/appeal",
+              "host": ["{{base_url}}"],
+              "path": ["appeal"]
+            },
+            "description": "Appeals the content_id captured from the 'Submit - Uncertain (Borderline)' request in folder 1. Run that request first in this session so {{content_id}} is populated. Appends a new audit-log entry (status: under_review) rather than mutating the original."
+          },
+          "response": []
+        },
+        {
+          "name": "Appeal - Unknown content_id (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content_id\": \"00000000-0000-0000-0000-000000000000\",\n  \"creator_reasoning\": \"Testing appeal behavior for a content_id that does not exist.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/appeal",
+              "host": ["{{base_url}}"],
+              "path": ["appeal"]
+            },
+            "description": "Appealing a content_id that was never submitted returns 404, not a silent success."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3 — Rate Limiting (12-request burst)",
+      "description": "/submit is limited to 10 requests/minute per client via Flask-Limiter. Run this folder with Collection Runner (or click through the 12 requests quickly by hand) to see the first 10 return 200 and the last 2 return 429.",
+      "item": [
+        {
+          "name": "Burst 01",
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["pm.test(\"Response is 200 (accepted) or 429 (rate limited)\", function () {", "    pm.expect([200, 429]).to.include(pm.response.code);", "});", "console.log('Burst 01 status:', pm.response.code);"]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"text\": \"Rate limit burst test request number 1 with enough words to be a valid submission.\",\n  \"creator_id\": \"burst_demo\"\n}", "options": {"raw": {"language": "json"}}},
+            "url": {"raw": "{{base_url}}/submit", "host": ["{{base_url}}"], "path": ["submit"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Burst 02",
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["pm.test(\"Response is 200 (accepted) or 429 (rate limited)\", function () {", "    pm.expect([200, 429]).to.include(pm.response.code);", "});", "console.log('Burst 02 status:', pm.response.code);"]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"text\": \"Rate limit burst test request number 2 with enough words to be a valid submission.\",\n  \"creator_id\": \"burst_demo\"\n}", "options": {"raw": {"language": "json"}}},
+            "url": {"raw": "{{base_url}}/submit", "host": ["{{base_url}}"], "path": ["submit"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Burst 03",
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["pm.test(\"Response is 200 (accepted) or 429 (rate limited)\", function () {", "    pm.expect([200, 429]).to.include(pm.response.code);", "});", "console.log('Burst 03 status:', pm.response.code);"]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"text\": \"Rate limit burst test request number 3 with enough words to be a valid submission.\",\n  \"creator_id\": \"burst_demo\"\n}", "options": {"raw": {"language": "json"}}},
+            "url": {"raw": "{{base_url}}/submit", "host": ["{{base_url}}"], "path": ["submit"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Burst 04",
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["pm.test(\"Response is 200 (accepted) or 429 (rate limited)\", function () {", "    pm.expect([200, 429]).to.include(pm.response.code);", "});", "console.log('Burst 04 status:', pm.response.code);"]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"text\": \"Rate limit burst test request number 4 with enough words to be a valid submission.\",\n  \"creator_id\": \"burst_demo\"\n}", "options": {"raw": {"language": "json"}}},
+            "url": {"raw": "{{base_url}}/submit", "host": ["{{base_url}}"], "path": ["submit"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Burst 05",
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["pm.test(\"Response is 200 (accepted) or 429 (rate limited)\", function () {", "    pm.expect([200, 429]).to.include(pm.response.code);", "});", "console.log('Burst 05 status:', pm.response.code);"]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"text\": \"Rate limit burst test request number 5 with enough words to be a valid submission.\",\n  \"creator_id\": \"burst_demo\"\n}", "options": {"raw": {"language": "json"}}},
+            "url": {"raw": "{{base_url}}/submit", "host": ["{{base_url}}"], "path": ["submit"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Burst 06",
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["pm.test(\"Response is 200 (accepted) or 429 (rate limited)\", function () {", "    pm.expect([200, 429]).to.include(pm.response.code);", "});", "console.log('Burst 06 status:', pm.response.code);"]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"text\": \"Rate limit burst test request number 6 with enough words to be a valid submission.\",\n  \"creator_id\": \"burst_demo\"\n}", "options": {"raw": {"language": "json"}}},
+            "url": {"raw": "{{base_url}}/submit", "host": ["{{base_url}}"], "path": ["submit"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Burst 07",
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["pm.test(\"Response is 200 (accepted) or 429 (rate limited)\", function () {", "    pm.expect([200, 429]).to.include(pm.response.code);", "});", "console.log('Burst 07 status:', pm.response.code);"]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"text\": \"Rate limit burst test request number 7 with enough words to be a valid submission.\",\n  \"creator_id\": \"burst_demo\"\n}", "options": {"raw": {"language": "json"}}},
+            "url": {"raw": "{{base_url}}/submit", "host": ["{{base_url}}"], "path": ["submit"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Burst 08",
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["pm.test(\"Response is 200 (accepted) or 429 (rate limited)\", function () {", "    pm.expect([200, 429]).to.include(pm.response.code);", "});", "console.log('Burst 08 status:', pm.response.code);"]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"text\": \"Rate limit burst test request number 8 with enough words to be a valid submission.\",\n  \"creator_id\": \"burst_demo\"\n}", "options": {"raw": {"language": "json"}}},
+            "url": {"raw": "{{base_url}}/submit", "host": ["{{base_url}}"], "path": ["submit"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Burst 09",
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["pm.test(\"Response is 200 (accepted) or 429 (rate limited)\", function () {", "    pm.expect([200, 429]).to.include(pm.response.code);", "});", "console.log('Burst 09 status:', pm.response.code);"]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"text\": \"Rate limit burst test request number 9 with enough words to be a valid submission.\",\n  \"creator_id\": \"burst_demo\"\n}", "options": {"raw": {"language": "json"}}},
+            "url": {"raw": "{{base_url}}/submit", "host": ["{{base_url}}"], "path": ["submit"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Burst 10",
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["pm.test(\"Response is 200 (accepted) or 429 (rate limited)\", function () {", "    pm.expect([200, 429]).to.include(pm.response.code);", "});", "console.log('Burst 10 status:', pm.response.code);"]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"text\": \"Rate limit burst test request number 10 with enough words to be a valid submission.\",\n  \"creator_id\": \"burst_demo\"\n}", "options": {"raw": {"language": "json"}}},
+            "url": {"raw": "{{base_url}}/submit", "host": ["{{base_url}}"], "path": ["submit"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Burst 11 (expect 429)",
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["pm.test(\"Response is 200 (accepted) or 429 (rate limited)\", function () {", "    pm.expect([200, 429]).to.include(pm.response.code);", "});", "console.log('Burst 11 status:', pm.response.code, '(expected 429 if run right after Burst 01-10)');"]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"text\": \"Rate limit burst test request number 11 with enough words to be a valid submission.\",\n  \"creator_id\": \"burst_demo\"\n}", "options": {"raw": {"language": "json"}}},
+            "url": {"raw": "{{base_url}}/submit", "host": ["{{base_url}}"], "path": ["submit"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Burst 12 (expect 429)",
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["pm.test(\"Response is 200 (accepted) or 429 (rate limited)\", function () {", "    pm.expect([200, 429]).to.include(pm.response.code);", "});", "console.log('Burst 12 status:', pm.response.code, '(expected 429 if run right after Burst 01-10)');"]}}],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"text\": \"Rate limit burst test request number 12 with enough words to be a valid submission.\",\n  \"creator_id\": \"burst_demo\"\n}", "options": {"raw": {"language": "json"}}},
+            "url": {"raw": "{{base_url}}/submit", "host": ["{{base_url}}"], "path": ["submit"]}
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4 — Audit Log",
+      "item": [
+        {
+          "name": "Get Audit Log",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Response has entries array\", function () {",
+                  "    pm.expect(json).to.have.property('entries');",
+                  "    pm.expect(json.entries).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test(\"Audit log has at least 3 entries\", function () {",
+                  "    pm.expect(json.entries.length).to.be.at.least(3);",
+                  "});",
+                  "",
+                  "console.log('Total audit log entries:', json.entries.length);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/log",
+              "host": ["{{base_url}}"],
+              "path": ["log"]
+            },
+            "description": "Returns every submission and appeal recorded so far — content_id, creator_id, timestamp, attribution, confidence, llm_score, stylometric_score, status, and appeal_reasoning where present."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
